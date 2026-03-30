@@ -2,23 +2,21 @@
 
 ## Project idea
 
-This project shows how a complaint can move through a simple system in the terminal.
+This project shows a simple terminal-based complaint routing system.
 
-The system does five main things:
-
-- receives a complaint
-- finds the correct department
-- stores the complaint in that department's priority queue
-- checks for a free agent
-- assigns the complaint if possible
+Each complaint is routed to one department, placed in that department's priority queue, and assigned to the department's single agent if the agent is free.
 
 ## Main flow
 
 ```text
-Complaint -> Category Mapping -> Department Heap -> Available Agent -> Assignment
+Complaint -> Category Mapping -> Department Queue -> Agent Assignment
+                                      |
+                                      -> waits if agent is busy
+
+Resolve Agent -> Agent becomes free -> Next waiting complaint auto-assigns
 ```
 
-## Where the main logic is written
+## Main files
 
 ### `app.py`
 
@@ -27,10 +25,10 @@ This is the entry point.
 It handles:
 
 - menu input
-- guided demo
-- custom complaint input
-- calling the service methods
-- showing output in the terminal
+- complaint submission input
+- agent resolution input
+- status display
+- printing event boxes
 
 ### `complaint_routing/service.py`
 
@@ -38,72 +36,64 @@ This is the main logic file.
 
 It handles:
 
-- category routing
+- category-to-department routing
 - complaint creation
-- heap insertion
-- agent checking
-- complaint assignment
-- complaint resolution
-- system snapshot creation
+- priority queue insertion
+- immediate assignment if the agent is free
+- explicit agent resolution
+- auto-assignment of the next waiting complaint
+- system status generation
 
 ### `complaint_routing/models.py`
 
-This file defines the basic objects used by the system:
+This file defines the core data objects:
 
 - `Complaint`
 - `Agent`
 - `Event`
 
-### `complaint_routing/sample_data.py`
-
-This file stores:
-
-- `DEFAULT_CATEGORY_MAP`
-- `DEMO_COMPLAINTS`
-- `build_default_agents()`
-
-### `complaint_routing/visuals.py`
-
-This file prints the boxes, header, menu, notes, and system state in the terminal.
-
 ## Exact place where each data structure lives
 
 | Data structure | Exact name | File |
 | --- | --- | --- |
-| Dictionary / HashMap | `DEFAULT_CATEGORY_MAP` | `complaint_routing/sample_data.py` |
 | Dictionary / HashMap | `self.category_map` | `complaint_routing/service.py` |
 | Dictionary | `self.complaints` | `complaint_routing/service.py` |
-| Dictionary of heaps | `self.department_heaps` | `complaint_routing/service.py` |
-| Dictionary of lists | `self.agents_by_department` | `complaint_routing/service.py` |
-| Heap items | `(-complaint.priority, sequence, complaint.id)` | `complaint_routing/service.py` |
-| List | `DEMO_COMPLAINTS` | `complaint_routing/sample_data.py` |
+| Dictionary of heaps | `self.department_queues` | `complaint_routing/service.py` |
+| Heap items | `(-complaint.priority, order, complaint.id)` | `complaint_routing/service.py` |
+| Dictionary | `self.agents_by_department` | `complaint_routing/service.py` |
+| Dictionary | `self.agents_by_id` | `complaint_routing/service.py` |
 | List | `Event.lines` | `complaint_routing/models.py` |
 
 ## Why this design is simple
 
 This project does not use:
 
-- database
-- web framework
+- a database
+- a web framework
+- background timers
 - threads
 - sockets
-- global priority queue
+- a global queue
 
-That keeps the project easy to understand.
+That keeps the project easy to read and explain.
 
 ## Important rule in this project
 
-Priority is handled only once.
+Priority is handled only once, inside each department queue.
 
-It happens inside the department heap.
+So in this project:
 
-So if someone says `department queue`, in this project that means the same thing as the department heap.
+- `department queue`
+- `department heap`
+- `priority queue`
+
+all mean the same waiting structure for one department.
 
 ## What makes it a DSA project
 
-This project is based on choosing the right data structure for the right job:
+This project uses:
 
-- dictionary for fast routing
-- heap for priority order
-- list for agent grouping and display
-- dictionary for fast complaint lookup
+- a dictionary for routing
+- a heap for priority ordering
+- a dictionary for complaint lookup
+- dictionaries for fast agent access

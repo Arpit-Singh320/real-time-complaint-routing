@@ -1,9 +1,15 @@
-from dataclasses import dataclass, field
-from typing import List, Optional
+"""
+Core data models for the complaint routing system.
+Simple, clean dataclasses with minimal complexity.
+"""
+
+from dataclasses import dataclass
+from typing import Optional, List
 
 
 @dataclass
 class Complaint:
+    """Represents a citizen complaint."""
     id: str
     text: str
     category: str
@@ -15,6 +21,7 @@ class Complaint:
 
 @dataclass
 class Agent:
+    """Represents a department agent."""
     id: str
     department: str
     available: bool = True
@@ -23,5 +30,10 @@ class Agent:
 
 @dataclass
 class Event:
+    """Represents a system event for logging."""
     title: str
-    lines: List[str] = field(default_factory=list)
+    lines: List[str] = None
+
+    def __post_init__(self):
+        if self.lines is None:
+            self.lines = []

@@ -1,66 +1,65 @@
 # Real-Time Complaint Routing Service
 
-This is a small terminal-based Python project that shows how a complaint moves through a system.
+This is a small terminal-based Python project for routing complaints to the correct department and assigning them to one department agent.
 
-The project is built around one simple flow:
+## Core flow
 
 ```text
-Complaint -> Category Mapping -> Department Heap -> Available Agent -> Assignment
+Submit complaint
+-> map category to department
+-> push complaint into that department queue
+-> assign immediately if the department agent is free
+-> otherwise keep it waiting in the queue
+-> explicitly resolve the agent when work is done
+-> auto-assign the next waiting complaint in that same department
 ```
 
-## What this project shows
+## What the project does
 
-- a complaint comes in
-- the category is mapped to a department
-- the complaint is stored in that department's priority queue
-- the system checks if an agent is free
-- the complaint is assigned if possible
-- if no agent is free, the complaint waits in the heap
+- receives a complaint with `text`, `category`, and `priority`
+- maps the category to one department
+- keeps a separate priority queue for each department
+- assigns the complaint immediately if that department's agent is free
+- keeps the complaint waiting if the agent is busy
+- frees the agent only when you explicitly resolve that agent
+- auto-assigns the next complaint from the same department queue after resolution
 
 ## Main data structures used
 
-| Data structure | Exact variable | File | Where it is used |
+| Data structure | Exact variable | File | Purpose |
 | --- | --- | --- | --- |
-| Dictionary / HashMap | `DEFAULT_CATEGORY_MAP` | `complaint_routing/sample_data.py` | Stores basic category to department mapping |
-| Dictionary / HashMap | `self.category_map` | `complaint_routing/service.py` | Used in `resolve_department()` for fast routing |
-| Dictionary | `self.complaints` | `complaint_routing/service.py` | Stores every complaint by ID |
-| Dictionary of heaps | `self.department_heaps` | `complaint_routing/service.py` | Stores one heap for each department |
-| Heap | each value inside `self.department_heaps` | `complaint_routing/service.py` | Used with `heapq.heappush()` and `heapq.heappop()` |
-| Dictionary of lists | `self.agents_by_department` | `complaint_routing/service.py` | Groups agents by department |
-| List | `DEMO_COMPLAINTS` | `complaint_routing/sample_data.py` | Guided demo input |
-| List | `lines` in `Event` | `complaint_routing/models.py` | Stores text shown in the terminal boxes |
+| Dictionary / HashMap | `self.category_map` | `complaint_routing/service.py` | category to department lookup |
+| Dictionary | `self.complaints` | `complaint_routing/service.py` | stores complaints by ID |
+| Dictionary of heaps | `self.department_queues` | `complaint_routing/service.py` | stores one priority queue per department |
+| Heap tuple | `(-priority, order, complaint_id)` | `complaint_routing/service.py` | keeps higher-priority complaints first |
+| Dictionary | `self.agents_by_department` | `complaint_routing/service.py` | stores one agent for each department |
+| Dictionary | `self.agents_by_id` | `complaint_routing/service.py` | direct agent lookup by agent ID |
+| List | `Event.lines` | `complaint_routing/models.py` | stores terminal output lines |
 
 ## Important design rule
 
-This project does **not** use priority twice.
+This project uses one priority queue per department.
 
-It uses:
-
-- one category mapping step
-- one heap per department
-
-So in this project:
+In this codebase:
 
 - `department queue`
 - `department heap`
 - `priority queue`
 
-all mean the same thing.
+all refer to the same per-department waiting structure.
 
-There is no separate global priority queue.
+There is no global queue and no timer-based processing.
 
 ## Project structure
 
 ```text
-DSA_Project/
+real-time-complaint-routing/
 ├── app.py
 ├── README.md
 ├── complaint_routing/
 │   ├── __init__.py
 │   ├── models.py
-│   ├── sample_data.py
-│   ├── service.py
-│   └── visuals.py
+│   └── service.py
 └── docs/
     ├── 01_system_overview.md
     ├── 02_data_structures_and_design.md
@@ -68,7 +67,9 @@ DSA_Project/
     ├── 04_implementation_plan.md
     ├── 05_complexity_and_edge_cases.md
     ├── 06_viva_qa.md
-    └── 07_file_and_function_guide.md
+    ├── 07_file_and_function_guide.md
+    ├── 08_clean_modular_design.md
+    └── 09_final_summary.md
 ```
 
 ## How to run
@@ -79,26 +80,15 @@ python3 app.py
 
 ## Menu options in the terminal app
 
-- run guided demo
-- submit custom complaint
+- submit complaint
 - resolve agent complaint
 - view current system state
-- reset system
-
-## Best way to study this project
-
-1. `docs/01_system_overview.md`
-2. `docs/02_data_structures_and_design.md`
-3. `docs/03_step_by_step_flow.md`
-4. `docs/04_implementation_plan.md`
-5. `docs/05_complexity_and_edge_cases.md`
-6. `docs/06_viva_qa.md`
-7. `docs/07_file_and_function_guide.md`
+- exit
 
 ## Best file to understand the core logic
 
-If you want to understand the main working first, read:
+Start with:
 
 `complaint_routing/service.py`
 
-That file contains the full routing, heap management, assignment, and resolution logic.
+That file contains the category mapping, queue handling, immediate assignment, explicit agent resolution, and auto-assignment logic.

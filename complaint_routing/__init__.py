@@ -1,4 +1,2 @@
-from .models import Agent, Complaint, Event
+from .models import Complaint, Agent, Event
 from .service import ComplaintRoutingService
-
-__all__ = ["Agent", "Complaint", "ComplaintRoutingService", "Event"]

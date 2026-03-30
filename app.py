@@ -1,114 +1,111 @@
-from complaint_routing.sample_data import DEMO_COMPLAINTS, DEFAULT_CATEGORY_MAP, build_default_agents
+"""Simple complaint routing terminal application."""
+
 from complaint_routing.service import ComplaintRoutingService
-from complaint_routing.visuals import pause, print_box, print_header, print_menu, print_snapshot, print_tip
 
 
-def build_service() -> ComplaintRoutingService:
-    return ComplaintRoutingService(DEFAULT_CATEGORY_MAP, build_default_agents())
+# === UI FUNCTIONS ===
+
+def print_box(title: str, content: list, width: int = 60):
+    """Print a simple box around content."""
+    border = "+" + "-" * (width - 2) + "+"
+    print(border)
+    print(f"| {title:^{width-4}} |")
+    print(border)
+    for line in content:
+        print(f"| {line:<{width-4}} |")
+    print(border)
 
 
-def show_events(service: ComplaintRoutingService, events, auto_pause: bool = True) -> None:
+def show_events(events: list):
+    """Display events with user control."""
     for event in events:
-        color = "cyan"
-        if "Assigned" in event.title:
-            color = "green"
-        elif "Waiting" in event.title:
-            color = "yellow"
-        elif "Resolve" in event.title:
-            color = "magenta"
-        print_box(event.title, event.lines, color=color)
-        pause(auto_pause)
-    print_snapshot(service.get_snapshot())
-    pause(auto_pause)
+        print_box(event.title, event.lines)
+        input("Press Enter to continue...")
 
 
-def run_guided_demo(service: ComplaintRoutingService) -> None:
-    print_tip(
-        [
-            "This demo shows routing, heap insert, assignment, waiting, and next assignment after resolution.",
-            "The third complaint waits because the Water Department has only one agent in this version.",
-        ]
-    )
+def show_status(status: dict):
+    """Display system status."""
+    print_box("SYSTEM STATUS", [
+        f"Total: {status['complaints']['total']}",
+        f"Waiting: {status['complaints']['waiting']}",
+        f"Assigned: {status['complaints']['assigned']}",
+        f"Resolved: {status['complaints']['resolved']}"
+    ])
 
-    for item in DEMO_COMPLAINTS:
-        _, events = service.submit_complaint(
-            text=item["text"],
-            category=item["category"],
-            priority=item["priority"],
-        )
-        show_events(service, events)
+    print_box("DEPARTMENTS", [
+        f"{dept}: {', '.join(complaints) if complaints else 'No waiting complaints'}"
+        for dept, complaints in status['departments'].items()
+    ])
 
-    print_tip(
-        [
-            "First the Electricity agent resolves its complaint. No one is waiting there.",
-            "Then the Water agent resolves C1, so the next Water complaint is assigned automatically.",
-        ]
-    )
-    show_events(service, service.resolve_agent("A2"))
-    show_events(service, service.resolve_agent("A1"))
+    print_box("AGENTS", [
+        f"{agent_id} ({info['department']}): {info['status']}"
+        for agent_id, info in status['agents'].items()
+    ])
 
 
-def submit_custom_complaint(service: ComplaintRoutingService) -> None:
-    print_tip(
-        [
-            "Available categories: water, electricity, road, other.",
-            "Priority range: 1 to 5. Higher number means higher urgency.",
-        ]
-    )
+# === USER INTERACTION FUNCTIONS ===
+
+def submit_complaint(service: ComplaintRoutingService):
+    """Handle user complaint submission."""
+    print_box("SUBMIT COMPLAINT", [
+        "Categories: water, electricity, road, other",
+        "Priority: 1-5 (higher = more urgent)"
+    ])
+
     text = input("Complaint text: ").strip()
-    category = input("Category: ").strip().lower()
+    category = input("Category: ").strip()
 
-    while True:
-        priority_text = input("Priority (1-5): ").strip()
-        if priority_text.isdigit() and 1 <= int(priority_text) <= 5:
-            priority = int(priority_text)
-            break
-        print("Enter a valid number from 1 to 5.")
+    try:
+        priority = int(input("Priority (1-5): ").strip())
+        if not 1 <= priority <= 5:
+            raise ValueError
+    except ValueError:
+        print("Invalid priority! Using 3.")
+        priority = 3
 
-    _, events = service.submit_complaint(text=text, category=category, priority=priority)
-    show_events(service, events, auto_pause=False)
+    complaint, events = service.submit_complaint(text, category, priority)
+    show_events(events)
 
 
-def resolve_agent_complaint(service: ComplaintRoutingService) -> None:
-    agent_id = input("Agent ID to resolve (example: A1): ").strip()
+def resolve_complaint(service: ComplaintRoutingService):
+    """Handle complaint resolution."""
+    print_box("RESOLVE COMPLAINT", [
+        "Available agents: A1 (Water), A2 (Electricity),",
+        "A3 (Municipal), A4 (General Support)"
+    ])
+
+    agent_id = input("Agent ID: ").strip()
     events = service.resolve_agent(agent_id)
-    show_events(service, events, auto_pause=False)
+    show_events(events)
 
 
-def view_state(service: ComplaintRoutingService) -> None:
-    print_snapshot(service.get_snapshot())
+# === MAIN APPLICATION ===
 
-
-def main() -> None:
-    service = build_service()
-    print_header()
-    print_tip(
-        [
-            "This project uses a category map and one heap for each department.",
-            "There is no global priority queue. Priority is handled inside each department.",
-        ]
-    )
+def main():
+    """Main application loop."""
+    service = ComplaintRoutingService()
 
     while True:
-        print_menu()
-        choice = input("Choose an option: ").strip()
+        print_box("MAIN MENU", [
+            "1. Submit Complaint",
+            "2. Resolve Complaint",
+            "3. View Status",
+            "0. Exit"
+        ])
+
+        choice = input("Choose option: ").strip()
 
         if choice == "1":
-            run_guided_demo(service)
+            submit_complaint(service)
         elif choice == "2":
-            submit_custom_complaint(service)
+            resolve_complaint(service)
         elif choice == "3":
-            resolve_agent_complaint(service)
-        elif choice == "4":
-            view_state(service)
-        elif choice == "5":
-            service = build_service()
-            print_box("System Reset", ["A fresh system has been created."], color="blue")
+            show_status(service.get_status())
         elif choice == "0":
-            print_box("Exit", ["Goodbye. Check the docs folder for full details."], color="magenta")
+            print("Goodbye!")
             break
         else:
-            print_box("Invalid Choice", ["Please select one of the menu options."], color="red")
+            print("Invalid option!")
 
 
 if __name__ == "__main__":
